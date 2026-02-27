@@ -4,9 +4,6 @@ Created on Thu Nov 20 16:25:24 2025
 
 @author: karl
 """
-from ultralytics import YOLO
-from wildlife_datasets.datasets import WildlifeDataset
-from wildlife_datasets.datasets import datasets
 import os
 import numpy as np
 import pandas as pd
@@ -14,28 +11,6 @@ import cv2 as cv
 import matplotlib.pyplot as plt
 from PIL import Image
 import re
-
-
-def restrict(data, folders, idx):
-    data, folders = data[idx], folders[idx]
-    while True:
-        max_col = np.max(folders.columns)
-        if all(folders[max_col].isnull()):
-            folders = folders.drop(max_col, axis=1)
-        else:
-            break
-    return data, folders
-
-
-def get_name(x):
-    x_splits = x.split("_")
-    if x.startswith("IMG_"):
-        if len(x_splits) >= 3:
-            return x_splits[2].split(".")[0]
-    else:
-        if len(x_splits) >= 2:
-            return x_splits[1].split(".")[0]
-    return None
 
 
 def get_point_sequence(result, list_of_classes):
