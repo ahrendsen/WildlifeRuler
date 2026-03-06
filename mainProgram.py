@@ -8,31 +8,23 @@ Created on Mon Feb 23 14:43:14 2026
 import RulerInference
 import FindMeasureKeypoints
 import measureLength
-import numpy as np
 import os
-import pandas as pd
 from wildlife_datasets.datasets import NewtsKent
 from ultralytics import YOLO
 
 
-base = "C:\\home\\programming\\neuralNewtwork"
-root = os.path.join(base, "datasets", "crestedNewt", "cloaca_set1")
-model_path = os.path.join(
-    base,
-    "crestedNewtProject",
-    "machineLearningModels",
-    "segmentTrain4",
-    "weights",
-    "last.pt",
-)
+root = "/data/wildlife_datasets/newts_kent"
+n_test = 10
+
+model_path = os.path.join("weights", "newt-detector.pt")
 
 model = YOLO(model_path)
 dataset = NewtsKent(root, load_label=True)
-dataset.df = dataset.df.iloc[:10]
 
-os.chdir(root)
+dataset.set_absolute_paths()
 
-dataset.df[
+metadata = dataset.metadata[:n_test].copy()
+metadata[
     [
         "rulerOrigin",
         "pixelToCm",
@@ -40,34 +32,13 @@ dataset.df[
         "rulerPoints",
         "rulerDirection",
     ]
-] = dataset.df.apply(
+] = metadata.apply(
     lambda x: RulerInference.infer_and_draw(x["path"], 768),
     result_type="expand",
     axis="columns",
 )
 
-dataset.df["path"].to_csv(
-    "testExport.txt", sep="\n", index=False, header=False
-)
-
-filesToProcess = os.path.join(os.getcwd(), "testExport.txt")
-
-# results = model.predict(filesToProcess, batch=10, stream=True)
-results = model.predict(filesToProcess, batch=10)
-
-pointValues = []
-pathValues = []
-for result in results:
-    pathValues.append(os.path.relpath(result.path, root))
-    pointValues.append(
-        FindMeasureKeypoints.get_point_sequence(
-            result, ["fake", "list", "of", "classes"]
-        )
-    )
-df2 = pd.DataFrame({"lengthMeasurePoints": pointValues, "path": pathValues})
-
-dataset.df = pd.merge(dataset.df, df2, how="inner", on="path")
-
-dataset.df["length"] = dataset.df.apply(
-    measureLength.measure_animal, axis="columns"
-)
+results = model.predict(metadata["path"].tolist(), batch=10)
+metadata["lengthMeasurePoints"] = [FindMeasureKeypoints.get_point_sequence(result) for result in results]
+metadata["length"] = metadata.apply(measureLength.measure_animal, axis="columns")
+metadata.to_csv("results.csv", index=False)
