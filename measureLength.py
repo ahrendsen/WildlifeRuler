@@ -73,6 +73,8 @@ def measure_animal(df_entry):
     cmConversion = df_entry["pixelToCm"]
     rulerDirection = df_entry["rulerDirection"]
     gpr = df_entry["progressionRatio"]  # The geometric progression ratio
+    if points is None:
+        return 0
     try:
         tip, tail = points[0], points[-1]
     except TypeError as e:
