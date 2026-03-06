@@ -13,18 +13,9 @@ from PIL import Image
 import re
 
 
-def get_point_sequence(result, list_of_classes):
+def get_point_sequence(result):
     cloacaFound = False
     headFound = False
-    class0 = list_of_classes[0]
-    class1 = list_of_classes[1]
-    class2 = list_of_classes[2]
-    try:
-        if len(list_of_classes) < 2:
-            raise Exception("List not long enough.")
-    except:
-        print("At least two class names must be provided.")
-    result.names
 
     if (0 in result.boxes.cls) and (
         (2 in result.boxes.cls) or (3 in result.boxes.cls)
@@ -83,8 +74,3 @@ def get_point_sequence(result, list_of_classes):
             return np.array([headTipxy[bestIndex], cloacaTipxy[bestIndex]])
         else:
             return np.array([[0, 0], [0, 0]])
-
-
-if __name__ == "__main__":
-    base = "C:\\home\\programming\\neuralNewtwork"
-    root = os.path.join(base, "datasets", "crestedNewt", "cloaca_set1")
