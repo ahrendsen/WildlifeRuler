@@ -1,9 +1,13 @@
+import cv2
+import networkx as nx
 import numpy as np
 import torch
 from scipy.spatial import ConvexHull, distance_matrix
 from scipy.ndimage import binary_erosion
 from scipy.spatial.distance import cdist
+from skimage.morphology import skeletonize
 from ultralytics.engine.results import Results
+
 
 def best_mask_for_class(result: Results, class_ids: list[int]) -> None | np.ndarray:
     if result.masks is None or result.boxes is None:
@@ -28,7 +32,47 @@ def boundary(mask: np.ndarray) -> np.ndarray:
     return mask & ~eroded
 
 
-def longest_distance_one_mask(mask: np.ndarray) -> None | np.ndarray:
+def get_centerline(mask: None | np.ndarray) -> None | np.ndarray:
+    if mask is None:
+        return None
+    
+    mask = mask.copy()
+    mask = (mask > 0).astype(np.uint8)
+
+    # Skeletonize
+    skeleton = skeletonize(mask).astype(np.uint8)
+
+    # Build graph from skeleton pixels
+    G = nx.Graph()
+    ys, xs = np.where(skeleton)
+    for y, x in zip(ys, xs):
+        for dy in [-1, 0, 1]:
+            for dx in [-1, 0, 1]:
+                if dy == 0 and dx == 0:
+                    continue
+                ny, nx_ = y + dy, x + dx
+                if 0 <= ny < skeleton.shape[0] and 0 <= nx_ < skeleton.shape[1]:
+                    if skeleton[ny, nx_]:
+                        G.add_edge((y, x), (ny, nx_))
+
+    # Find endpoints (degree == 1)
+    endpoints = [n for n in G.nodes if G.degree[n] == 1]
+
+    # Longest path between endpoints (head ↔ tail)
+    max_path = []
+    for i in range(len(endpoints)):
+        for j in range(i + 1, len(endpoints)):
+            try:
+                path = nx.shortest_path(G, endpoints[i], endpoints[j])
+                if len(path) > len(max_path):
+                    max_path = path
+            except nx.NetworkXNoPath:
+                pass
+
+    return np.array(max_path)
+
+
+def longest_distance_one_mask(mask: None | np.ndarray) -> None | np.ndarray:
     if mask is None:
         return None
     
@@ -42,7 +86,7 @@ def longest_distance_one_mask(mask: np.ndarray) -> None | np.ndarray:
     return np.array((hull[i], hull[j]))
 
 
-def longest_distance_two_masks(mask1: np.ndarray, mask2: np.ndarray) -> None | np.ndarray:
+def longest_distance_two_masks(mask1: None | np.ndarray, mask2: None | np.ndarray) -> None | np.ndarray:
     if mask1 is None or mask2 is None:
         return None
     
