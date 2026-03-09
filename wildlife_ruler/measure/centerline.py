@@ -3,7 +3,7 @@ import networkx as nx
 import numpy as np
 import torch
 from scipy.spatial import ConvexHull, distance_matrix
-from scipy.ndimage import binary_erosion
+from scipy.ndimage import binary_erosion, label
 from scipy.spatial.distance import cdist
 from skimage.morphology import skeletonize
 from ultralytics.engine.results import Results
@@ -30,6 +30,45 @@ def best_mask_for_class(result: Results, class_ids: list[int]) -> None | np.ndar
 def boundary(mask: np.ndarray) -> np.ndarray:
     eroded = binary_erosion(mask)
     return mask & ~eroded
+
+
+# TODO: axis_1 is not nice
+def fill_mask_axis_1(mask, tol_ratio=0.25):
+    labeled, n = label(mask)
+
+    if n != 2:
+        return mask
+
+    mask1 = labeled == 1
+    mask2 = labeled == 2
+    idx1 = np.where(mask1)
+    idx2 = np.where(mask2)
+    if np.mean(idx1[1]) > np.mean(idx2[1]):
+        mask1, mask2 = mask2, mask1
+        idx1, idx2 = idx2, idx1
+    
+    border_diff = np.min(idx2[1]) - np.max(idx1[1])
+    if border_diff < 0:
+        return mask
+
+    col_min = []
+    col_max = []
+    for i in range(mask.shape[0]):
+        cols1 = np.where(mask1[i])[0]
+        cols2 = np.where(mask2[i])[0]
+        col_min.append(cols1[-1] if len(cols1) > 0 else -np.inf)
+        col_max.append(cols2[0] if len(cols2) > 0 else np.inf)
+
+    border_diff = np.min(np.array(col_max) - np.array(col_min))
+    
+    if border_diff < 0:
+        return mask
+    
+    filled = mask.copy()
+    for i, (c_min, c_max) in enumerate(zip(col_min, col_max)):
+        if c_max - c_min <= (1 + tol_ratio) * border_diff:
+            filled[i, c_min:c_max+1] = True
+    return filled
 
 
 def get_centerline(mask: None | np.ndarray) -> None | np.ndarray:
