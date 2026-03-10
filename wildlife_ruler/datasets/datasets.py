@@ -93,3 +93,8 @@ class SeaHorses(Dataset_SAM3):
     def _extract_centerline(self, mask) -> None | np.ndarray:
         mask = fill_mask_axis_1(mask)
         return get_centerline(mask)
+
+
+class Snakes(Dataset_SAM3):
+    def _extract_centerline(self, mask) -> None | np.ndarray:
+        return get_centerline(mask)
