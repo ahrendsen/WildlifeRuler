@@ -119,6 +119,9 @@ def get_centerline(mask: None | np.ndarray) -> None | np.ndarray:
             except nx.NetworkXNoPath:
                 pass
 
+    if len(max_path) == 0:
+        return None
+    
     return np.array(max_path)
 
 
