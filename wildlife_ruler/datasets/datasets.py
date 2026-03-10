@@ -21,6 +21,10 @@ class Dataset:
 
     def __getitem__(self, i):
         return self.dataset[i]
+    
+    @property
+    def name(self):
+        return self.__class__.__name__
 
 
 class Dataset_SAM3(Dataset):
