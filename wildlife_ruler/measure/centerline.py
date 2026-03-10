@@ -32,9 +32,25 @@ def boundary(mask: np.ndarray) -> np.ndarray:
     return mask & ~eroded
 
 
+
+def filter_small_components(labeled, min_area):
+    labels = np.unique(labeled)
+    labels = labels[labels != 0]
+
+    areas = {l: np.sum(labeled == l) for l in labels}
+    keep = [l for l in labels if areas[l] >= min_area]
+
+    out = np.zeros_like(labeled)
+    for new_label, old_label in enumerate(keep, start=1):
+        out[labeled == old_label] = new_label
+
+    return out, len(keep)
+
+
 # TODO: axis_1 is not nice
-def fill_mask_axis_1(mask, tol_ratio=0.25):
+def fill_mask_axis_1(mask, tol_ratio=0.25, min_area=100):
     labeled, n = label(mask)
+    labeled, n = filter_small_components(labeled, min_area)
 
     if n != 2:
         return mask
@@ -45,12 +61,7 @@ def fill_mask_axis_1(mask, tol_ratio=0.25):
     idx2 = np.where(mask2)
     if np.mean(idx1[1]) > np.mean(idx2[1]):
         mask1, mask2 = mask2, mask1
-        idx1, idx2 = idx2, idx1
     
-    border_diff = np.min(idx2[1]) - np.max(idx1[1])
-    if border_diff < 0:
-        return mask
-
     col_min = []
     col_max = []
     for i in range(mask.shape[0]):
